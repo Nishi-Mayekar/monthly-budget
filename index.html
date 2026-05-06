@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#FAF8F5;--bg2:#F2EFE9;--bg3:#E8E3DA;
+  --ink:#1A1612;--ink2:#5C5449;--ink3:#9A9088;
+  --accent:#C4521A;--accent2:#D4824A;--accent3:#E8A870;
+  --green:#2D6A4F;--green2:#52B788;--green3:#95D5B2;
+  --blue:#1D3557;--blue2:#457B9D;--blue3:#A8DADC;
+  --gold:#B5830A;--gold2:#D4A22A;--gold3:#F2CC6B;
+  --red:#9B1D1D;--red2:#C94040;--red3:#F28B82;
+  --r:12px;--r2:8px;--r3:20px;
+  --sh:0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --sh2:0 2px 8px rgba(0,0,0,.12),0 8px 32px rgba(0,0,0,.1);
+  --font-serif:'Libre Baskerville',Georgia,serif;
+  --font-sans:'Inter',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font-sans)}
+.screen{display:none;height:100%;overflow:hidden}
+.screen.active{display:flex;flex-direction:column}
+
+/* ── ONBOARD ── */
+#onboard{justify-content:center;align-items:center;background:var(--bg);padding:32px 24px;gap:0}
+.ob-logo{font-family:var(--font-serif);font-size:48px;font-weight:700;color:var(--ink);letter-spacing:-1px;margin-bottom:8px}
+.ob-tagline{font-size:14px;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:48px}
+.ob-card{background:var(--bg2);border-radius:var(--r);padding:28px 24px;width:100%;max-width:360px;margin-bottom:32px;border:1px solid var(--bg3)}
+.ob-card h2{font-family:var(--font-serif);font-size:22px;line-height:1.3;color:var(--ink);margin-bottom:12px}
+.ob-card p{font-size:14px;line-height:1.6;color:var(--ink2)}
+.ob-features{display:flex;flex-direction:column;gap:8px;width:100%;max-width:360px;margin-bottom:32px}
+.ob-feat{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink2)}
+.ob-feat-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ob-feat-icon.green{background:rgba(82,183,136,.15);color:var(--green)}
+.ob-feat-icon.amber{background:rgba(212,130,74,.15);color:var(--accent2)}
+.ob-feat-icon.blue{background:rgba(69,123,157,.15);color:var(--blue2)}
+.ob-actions{display:flex;flex-direction:column;gap:12px;width:100%;max-width:360px}
+.btn-primary{background:var(--ink);color:#fff;border:none;border-radius:var(--r);padding:16px 24px;font-family:var(--font-sans);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s;width:100%}
+.btn-primary:active{opacity:.8}
+.btn-secondary{background:transparent;color:var(--ink3);border:none;font-family:var(--font-sans);font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:4px;align-self:center}
+
+/* ── LOADING OVERLAY ── */
+#loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:900;flex-direction:column;align-items:center;justify-content:center;gap:16px;display:none}
+#loading-overlay.visible{display:flex}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--bg3);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--ink2);font-weight:500}
+.loading-sub{font-size:12px;color:var(--ink3)}
+
+/* ── MAIN APP ── */
+#main-app{display:none;flex-direction:column;height:100%;overflow:hidden}
+#main-app.visible{display:flex}
+
+/* ── BOTTOM NAV ── */
+.bnav{display:flex;background:var(--bg);border-top:1px solid var(--bg3);padding:8px 0 env(safe-area-inset-bottom,8px);flex-shrink:0}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border:none;background:transparent;cursor:pointer;color:var(--ink3);font-size:10px;font-family:var(--font-sans);font-weight:500;transition:color .15s}
+.bnav-btn.active{color:var(--ink)}
+.bnav-btn svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── TAB PANELS ── */
+.tab-panel{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tab-panel.active{display:flex}
+
+/* ── STAB (sub-tab) ── */
+.stab-row{display:flex;border-bottom:1px solid var(--bg3);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 16px}
+.stab-row::-webkit-scrollbar{display:none}
+.stab-btn{flex-shrink:0;background:transparent;border:none;padding:12px 16px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.stab-btn.active{color:var(--ink);border-bottom-color:var(--ink)}
+.stab-panel{display:none;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+.stab-panel.active{display:block}
+
+/* ── SECTION HEADERS ── */
+.sec-header{padding:20px 16px 8px}
+.sec-title{font-family:var(--font-serif);font-size:20px;color:var(--ink)}
+.sec-sub{font-size:12px;color:var(--ink3);margin-top:2px}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:var(--r);padding:16px;margin:0 16px 12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.04)}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:8px}
+
+/* ── SUMMARY TILES ── */
+.summary-row{display:flex;gap:10px;padding:0 16px;margin-bottom:12px}
+.summary-tile{flex:1;background:#fff;border-radius:var(--r2);padding:12px 10px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.04);text-align:center}
+.summary-tile .lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:4px}
+.summary-tile .val{font-family:var(--font-serif);font-size:18px;font-weight:700;color:var(--ink)}
+.summary-tile .val.green{color:var(--green)}
+.summary-tile .val.red{color:var(--red2)}
+.summary-tile .val.blue{color:var(--blue)}
+
+/* ── CATEGORY LIST ── */
+.cat-list{padding:0 16px}
+.cat-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bg2)}
+.cat-item:last-child{border-bottom:none}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cat-name{flex:1;font-size:14px;color:var(--ink);font-weight:500}
+.cat-count{font-size:11px;color:var(--ink3);margin-right:8px}
+.cat-amt{font-size:15px;font-weight:600;color:var(--ink);font-family:var(--font-serif)}
+.cat-bar-row{margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+
+/* ── TXN LIST ── */
+.txn-list{padding:0 16px}
+.txn-date-group{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);padding:16px 0 6px}
+.txn-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bg2)}
+.txn-item:last-child{border-bottom:none}
+.txn-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.txn-body{flex:1;min-width:0}
+.txn-name{font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txn-meta{font-size:11px;color:var(--ink3);margin-top:1px}
+.txn-amt{font-family:var(--font-serif);font-size:15px;font-weight:700;flex-shrink:0}
+.txn-amt.debit{color:var(--red2)}
+.txn-amt.credit{color:var(--green)}
+.txn-amt.invest{color:var(--blue2)}
+
+/* ── INVESTING ── */
+.invest-summary{display:flex;gap:10px;padding:0 16px;margin-bottom:12px}
+.invest-tile{flex:1;background:#fff;border-radius:var(--r2);padding:12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.04)}
+.invest-tile .lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:4px}
+.invest-tile .val{font-family:var(--font-serif);font-size:18px;font-weight:700;color:var(--blue)}
+.invest-breakdown{padding:0 16px}
+.invest-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg2)}
+.invest-row:last-child{border-bottom:none}
+.invest-row-label{font-size:13px;color:var(--ink);font-weight:500}
+.invest-row-sub{font-size:11px;color:var(--ink3)}
+.invest-row-amt{font-family:var(--font-serif);font-size:14px;font-weight:600;color:var(--blue)}
+
+/* ── INSIGHTS ── */
+.insight-card{background:#fff;border-radius:var(--r);margin:0 16px 12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.04);overflow:hidden;cursor:pointer;-webkit-user-select:none;user-select:none}
+.insight-card-header{padding:16px 16px 10px;display:flex;align-items:flex-start;gap:12px}
+.insight-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.insight-title{font-weight:600;font-size:15px;color:var(--ink);line-height:1.3}
+.insight-preview{font-size:13px;color:var(--ink2);margin-top:3px}
+.insight-footer{padding:10px 16px 14px;border-top:1px solid var(--bg2);display:flex;justify-content:space-between;align-items:center}
+.insight-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:20px}
+.insight-tag.alert{background:rgba(201,64,64,.1);color:var(--red2)}
+.insight-tag.tip{background:rgba(45,106,79,.1);color:var(--green)}
+.insight-tag.info{background:rgba(69,123,157,.1);color:var(--blue2)}
+.insight-cta{font-size:12px;color:var(--ink3);font-weight:500}
+
+/* ── OVERLAY SHEETS ── */
+.overlay-backdrop{position:fixed;inset:0;background:rgba(26,22,18,.5);z-index:800;display:none;align-items:flex-end;justify-content:center}
+.overlay-backdrop.visible{display:flex}
+.bottom-sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:24px 20px env(safe-area-inset-bottom,20px);max-height:85vh;overflow-y:auto}
+.sheet-handle{width:36px;height:4px;background:var(--bg3);border-radius:2px;margin:0 auto 20px}
+.sheet-title{font-family:var(--font-serif);font-size:22px;color:var(--ink);margin-bottom:8px}
+.sheet-body{font-size:14px;line-height:1.7;color:var(--ink2)}
+.sheet-close{margin-top:20px;width:100%;padding:14px;background:var(--ink);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-sans);font-size:15px;font-weight:600;cursor:pointer}
+
+/* ── SAVE TAB ── */
+.opp-card{background:#fff;border-radius:var(--r);margin:0 16px 12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.04);overflow:hidden;cursor:pointer;-webkit-user-select:none;user-select:none}
+.opp-card-inner{padding:16px}
+.opp-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.opp-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.opp-title{font-weight:600;font-size:15px;color:var(--ink)}
+.opp-sub{font-size:13px;color:var(--ink2);margin-top:2px}
+.opp-saving{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(45,106,79,.06);border-radius:var(--r2)}
+.opp-saving-label{font-size:12px;color:var(--ink2);flex:1}
+.opp-saving-amt{font-family:var(--font-serif);font-size:18px;font-weight:700;color:var(--green)}
+
+/* ── PRIVACY TAB ── */
+.privacy-hero{padding:24px 16px 16px;text-align:center}
+.privacy-icon{font-size:48px;margin-bottom:12px}
+.privacy-title{font-family:var(--font-serif);font-size:24px;color:var(--ink);margin-bottom:8px}
+.privacy-subtitle{font-size:14px;color:var(--ink2);line-height:1.6;max-width:300px;margin:0 auto}
+.privacy-list{padding:0 16px}
+.privacy-item{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--bg2)}
+.privacy-item:last-child{border-bottom:none}
+.privacy-item-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.privacy-item-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.privacy-item-desc{font-size:13px;color:var(--ink2);line-height:1.5}
+.privacy-session-badge{background:rgba(45,106,79,.08);border:1px solid rgba(45,106,79,.2);border-radius:var(--r2);padding:14px;margin:0 16px 12px;display:flex;align-items:center;gap:12px}
+.privacy-session-text{font-size:13px;color:var(--green);font-weight:500;line-height:1.4}
+
+/* ── PASTE MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,22,18,.6);z-index:850;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.visible{display:flex}
+.modal-sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:24px 20px env(safe-area-inset-bottom,20px)}
+.modal-title{font-family:var(--font-serif);font-size:20px;color:var(--ink);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--ink3);margin-bottom:16px;line-height:1.5}
+.modal-textarea{width:100%;height:140px;background:var(--bg2);border:1px solid var(--bg3);border-radius:var(--r2);padding:12px;font-family:var(--font-sans);font-size:13px;color:var(--ink);resize:none;line-height:1.5;outline:none}
+.modal-textarea::placeholder{color:var(--ink3)}
+.modal-actions{display:flex;gap:10px;margin-top:12px}
+.btn-outline{flex:1;background:transparent;border:1px solid var(--bg3);border-radius:var(--r2);padding:12px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--ink2);cursor:pointer}
+.btn-filled{flex:1;background:var(--ink);border:none;border-radius:var(--r2);padding:12px;font-family:var(--font-sans);font-size:14px;font-weight:600;color:#fff;cursor:pointer}
+
+/* ── MONTH SELECTOR ── */
+.month-row{display:flex;align-items:center;gap:8px;padding:12px 16px;flex-shrink:0}
+.month-btn{background:transparent;border:none;cursor:pointer;padding:4px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
+.month-btn svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.month-label{font-family:var(--font-serif);font-size:18px;color:var(--ink);flex:1;text-align:center}
+
+/* ── EMPTY STATE ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 32px;text-align:center;gap:12px}
+.empty-icon{font-size:48px;opacity:.4}
+.empty-title{font-family:var(--font-serif);font-size:20px;color:var(--ink);opacity:.6}
+.empty-sub{font-size:13px;color:var(--ink3);line-height:1.6;max-width:260px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ONBOARD SCREEN -->
+<div id="onboard" class="screen active">
+  <div class="ob-logo">Ledger</div>
+  <div class="ob-tagline">Your money, clearly</div>
+
+  <div class="ob-card">
+    <h2>Understand your spending without sharing your data</h2>
+    <p>Ledger reads your bank SMS locally on your device. Nothing is ever stored or uploaded. The moment you close the app, everything is gone.</p>
+  </div>
+
+  <div class="ob-features">
+    <div class="ob-feat">
+      <div class="ob-feat-icon green">🔒</div>
+      <span>SMS stays on your device — never leaves the app</span>
+    </div>
+    <div class="ob-feat">
+      <div class="ob-feat-icon amber">⚡</div>
+      <span>Auto-categorises spending across 15+ categories</span>
+    </div>
+    <div class="ob-feat">
+      <div class="ob-feat-icon blue">📊</div>
+      <span>Spots savings opportunities you might be missing</span>
+    </div>
+  </div>
+
+  <div class="ob-actions">
+    <button class="btn-primary" onclick="handleBegin()">Grant SMS Access</button>
+    <button class="btn-secondary" onclick="openPasteModal()">Import manually (web / testing)</button>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Reading your messages…</div>
+  <div class="loading-sub" id="loading-sub">Filtering bank SMS only</div>
+</div>
+
+<!-- PASTE MODAL (fallback for web/testing) -->
+<div id="paste-modal" class="modal-overlay">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="modal-title">Paste bank SMS</div>
+    <div class="modal-sub">Paste multiple SMS messages below. OTPs, card numbers, and account numbers are never processed.</div>
+    <textarea id="paste-input" class="modal-textarea" placeholder="Paste your bank messages here — one per line or as a bulk copy…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closePasteModal()">Cancel</button>
+      <button class="btn-filled" onclick="processPasted()">Analyse</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+
+  <!-- TAB: SPEND -->
+  <div id="tab-spend" class="tab-panel active">
+    <div class="month-row">
+      <button class="month-btn" onclick="changeMonth(-1)">
+        <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+      </button>
+      <div class="month-label" id="month-label">All time</div>
+      <button class="month-btn" onclick="changeMonth(1)">
+        <svg viewBox="0 0 24 24"><polyline points="9,6 15,12 9,18"/></svg>
+      </button>
+    </div>
+    <div class="stab-row">
+      <button class="stab-btn active" onclick="switchStab('spend','overview')">Overview</button>
+      <button class="stab-btn" onclick="switchStab('spend','categories')">Categories</button>
+      <button class="stab-btn" onclick="switchStab('spend','transactions')">Transactions</button>
+    </div>
+    <div id="stab-spend-overview" class="stab-panel active">
+      <div id="spend-overview-content"></div>
+    </div>
+    <div id="stab-spend-categories" class="stab-panel">
+      <div id="spend-categories-content"></div>
+    </div>
+    <div id="stab-spend-transactions" class="stab-panel">
+      <div id="spend-transactions-content"></div>
+    </div>
+  </div>
+
+  <!-- TAB: INVESTING -->
+  <div id="tab-invest" class="tab-panel">
+    <div class="sec-header">
+      <div class="sec-title">Investing</div>
+      <div class="sec-sub">SIP, FD, RD, stocks &amp; more</div>
+    </div>
+    <div id="invest-content" style="overflow-y:auto;flex:1;padding-bottom:80px"></div>
+  </div>
+
+  <!-- TAB: INSIGHTS -->
+  <div id="tab-insights" class="tab-panel">
+    <div class="stab-row">
+      <button class="stab-btn active" onclick="switchStab('insights','patterns')">Patterns</button>
+      <button class="stab-btn" onclick="switchStab('insights','anomalies')">Anomalies</button>
+    </div>
+    <div id="stab-insights-patterns" class="stab-panel active">
+      <div id="insights-patterns-content" style="padding-top:8px"></div>
+    </div>
+    <div id="stab-insights-anomalies" class="stab-panel">
+      <div id="insights-anomalies-content" style="padding-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- TAB: SAVE -->
+  <div id="tab-save" class="tab-panel">
+    <div class="sec-header">
+      <div class="sec-title">Save More</div>
+      <div class="sec-sub">Personalised opportunities based on your spending</div>
+    </div>
+    <div id="save-content" style="overflow-y:auto;flex:1;padding-bottom:80px"></div>
+  </div>
+
+  <!-- TAB: PRIVACY -->
+  <div id="tab-privacy" class="tab-panel" style="overflow-y:auto">
+    <div class="privacy-hero">
+      <div class="privacy-icon">🛡️</div>
+      <div class="privacy-title">Your privacy, guaranteed</div>
+      <div class="privacy-subtitle">Ledger is designed so your financial data never leaves your phone.</div>
+    </div>
+    <div class="privacy-session-badge">
+      <div style="font-size:24px">🟢</div>
+      <div class="privacy-session-text">Session-only mode active<br><span style="font-weight:400;color:var(--green2)">All data clears when you close the app</span></div>
+    </div>
+    <div class="privacy-list">
+      <div class="privacy-item">
+        <div class="privacy-item-icon">📵</div>
+        <div>
+          <div class="privacy-item-title">No internet required</div>
+          <div class="privacy-item-desc">All analysis happens on your device. No data is sent to any server — ever.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <div class="privacy-item-icon">🔍</div>
+        <div>
+          <div class="privacy-item-title">Bank SMS only</div>
+          <div class="privacy-item-desc">Only messages from known bank sender IDs (HDFCBK, ICICIB, SBIINB, etc.) are read. All other SMS are ignored.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <div class="privacy-item-icon">🚫</div>
+        <div>
+          <div class="privacy-item-title">Sensitive data never shown</div>
+          <div class="privacy-item-desc">OTPs, full card numbers, account numbers, and mobile numbers are filtered in the native layer before reaching this app.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <div class="privacy-item-icon">🗑️</div>
+        <div>
+          <div class="privacy-item-title">Clears on close</div>
+          <div class="privacy-item-desc">No localStorage, no cookies, no databases. Close the app and everything is gone — immediately.</div>
+        </div>
+      </div>
+      <div class="privacy-item">
+        <div class="privacy-item-icon">🔓</div>
+        <div>
+          <div class="privacy-item-title">Open source logic</div>
+          <div class="privacy-item-desc">The parsing and categorisation code is visible in this file. There are no hidden network calls or third-party analytics.</div>
+        </div>
+      </div>
+    </div>
+    <div style="height:80px"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bnav">
+    <button class="bnav-btn active" id="nav-spend" onclick="switchTab('spend')">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Spend
+    </button>
+    <button class="bnav-btn" id="nav-invest" onclick="switchTab('invest')">
+      <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+      Invest
+    </button>
+    <button class="bnav-btn" id="nav-insights" onclick="switchTab('insights')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Insights
+    </button>
+    <button class="bnav-btn" id="nav-save" onclick="switchTab('save')">
+      <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Save
+    </button>
+    <button class="bnav-btn" id="nav-privacy" onclick="switchTab('privacy')">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Privacy
+    </button>
+  </nav>
+</div>
+
+<!-- INSIGHT DETAIL OVERLAY -->
+<div id="insight-detail" class="overlay-backdrop" onclick="closeInsightDetail(event)">
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="insight-detail-title"></div>
+    <div class="sheet-body" id="insight-detail-body"></div>
+    <button class="sheet-close" onclick="closeInsightDetail()">Got it</button>
+  </div>
+</div>
+
+<!-- OPPORTUNITY OVERLAY -->
+<div id="opp-overlay" class="overlay-backdrop" onclick="closeOppOverlay(event)">
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="opp-detail-title"></div>
+    <div class="sheet-body" id="opp-detail-body"></div>
+    <button class="sheet-close" onclick="closeOppOverlay()">Got it</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── SESSION STATE — lives only in JS memory, never persisted ───
+let S = { transactions: [], rawCount: 0, selectedMonth: null };
+
+// ─── CATEGORY DEFINITIONS ───
+const CATS = [
+  {
+    id:'qc', name:'Quick Commerce', color:'#D4824A', icon:'🛒',
+    test: m => /zepto|blinkit|grofers|dunzo|swiggy\s*instamart|instamart|bigbasket|bb\s*now|jiomart|amazon\s*fresh|amazonfresh|bbstar|rapido\s*grocery|nykaa\s*now|zepto\s*cafe|10\s*minute\s*delivery/.test(m)
+  },
+  {
+    id:'food', name:'Food & Dining', color:'#C4521A', icon:'🍽️',
+    test: m => /\bswiggy\b(?!.*instamart)|zomato|domino'?s?|pizza\s*hut|mcdonald|kfc\b|subway\b|burger\s*king|starbucks|cafe\s*coffee\s*day|ccd\b|costa\s*coffee|barista\b|dineout|eazydiner|magicpin|eatclub|faasos|box8|freshmenu|biryani\s*by\s*kilo|behrouz|barbeque\s*nation|\bsocial\b.*food|wow\s*momos|wow\s*china|the\s*lunchbox|eat\.fit|oven\s*story|la\s*pino[sz]|mad\s*over\s*donuts|rebel\s*foods|foodpanda|haldiram|bikaner|theobroma|rolls\s*mania|boba\s*bhai/.test(m)
+  },
+  {
+    id:'ecomm', name:'Shopping', color:'#8B5CF6', icon:'🛍️',
+    test: m => /\bamazon\b(?!\s*fresh|\s*pay|\s*prime\s*video|\s*prime$)|flipkart|myntra|nykaa\b(?!\s*now)|ajio\b|meesho|snapdeal|tata\s*cliq|tatacliq|reliance\s*digital|croma\b|firstcry|lenskart|decathlon|pepperfry|urban\s*ladder|ikea\b|lifestyle\s*store|westside\b|pantaloons|max\s*fashion|shoppers\s*stop|central\b.*shop|bewakoof|boat\s*store|noise\s*store|samsung\s*shop|apple\s*store|vijay\s*sales|poorvika|sangeetha\s*mob/.test(m)
+  },
+  {
+    id:'invest', name:'Investing', color:'#1D3557', icon:'📈',
+    test: m => /\bgroww\b|\bzerodha\b|\bkite\b.*zerodha|upstox|angel\s*one|angelone|5paisa|iifl\s*(sec|markets)|kuvera|etmoney|et\s*money|indmoney|ind\s*money|paytm\s*money|dhan\b|fyers\b|mstock\b|m\.?stock|smallcase|flattrade|motilal\s*oswal|mofsl|icici\s*direct|hdfc\s*sec|kotak\s*sec|sbi\s*sec|axis\s*sec|edelweiss\s*br|sharekhan|geojit|stoxkart|shoonya|rupeezy|tradejini|\bsip\b|\bmutual\s*fund\b|\bfolio\b|\bnav\b.*unit|units\s*allot|lumpsum\s*(invest|purchase)|fixed\s*deposit\s*(opened|created|booked)|\bfd\s+(opened|created|booked|of\s+rs)|\brd\s+(opened|created|instalment)|recurring\s*deposit|public\s*provident\s*fund|\bppf\b|\bnps\b|national\s*pension|elss\b|tax\s*saver\s*fund|demat\s*(credit|debit)|brokerage\s*charged|shares?\s*(purchased|bought)|stock\s*(purchase|invest)/.test(m)
+  },
+  {
+    id:'transport', name:'Transport', color:'#457B9D', icon:'🚗',
+    test: m => /\bola\b(?!\s*electric)|\buber\b|\brapido\b(?!\s*grocery)|\bnamma\s*yatri|yatri\b|meru\b|taxi\s*for\s*sure|jugnoo|irctc|indian\s*railways?|train\s*ticket|air\s*india|indigo\s*(air|book)|spicejet|go\s*first|akasa\s*air|vistara|ola\s*electric|yulu\b|bounce\s*scooter|vogo\b|drivezy|zoomcar|self\s*drive|fastag\s*(toll|recharge)|toll\s*plaza|redbus|abhibus|paytm.*bus|chalo\b.*bus|citibus|blubus/.test(m)
+  },
+  {
+    id:'sub', name:'Subscriptions', color:'#7C3AED', icon:'📺',
+    test: m => /netflix|amazon\s*prime\b(?!\s*video\s*order)|prime\s*video\s*sub|hotstar|disney\s*\+?|zee5\b|sonyliv|jio\s*cinema|jiocinema|spotify|gaana\b|jio\s*saavn|jiosaavn|wynk\b|hungama\b|youtube\s*premium|audible\b|coursera|udemy|unacademy|byjus|vedantu|toppr|physicswallah|\bpw\s*edu|linkedin\s*premium|adobe\s*(sub|creative)|microsoft\s*365|office\s*365|notion\s*sub|dropbox\s*sub|google\s*one|icloud\s*sub|apple\s*one|apple\s*music|mxplayer|voot\b|aha\b.*ott|sun\s*nxt/.test(m)
+  },
+  {
+    id:'bills', name:'Bills & Recharges', color:'#0EA5E9', icon:'⚡',
+    test: m => /recharge\b|prepaid\s*recharge|postpaid\s*bill|electricity\s*bill|bescom\b|msedcl\b|tneb\b|cesc\b|adani\s*electric|tata\s*power|bses\b|water\s*bill|gas\s*bill|\bigl\b|\bmgl\b|broadband\s*bill|fibernet\s*bill|act\s*fibernet|jio\s*fiber|airtel\s*fiber|hathway\s*broad|tata\s*sky|tataplay|dish\s*tv|sun\s*direct|\bd2h\b|videocon\s*d2h|airtel\s*dth|bsnl\s*bill|vi\s*bill|vodafone\s*bill|jio\s*bill\b|airtel\s*bill\b|landline\s*bill/.test(m)
+  },
+  {
+    id:'health', name:'Healthcare', color:'#10B981', icon:'💊',
+    test: m => /pharmaeasy|tata\s*1mg|\b1mg\b|netmeds|apollo\s*pharma|medplus|practo|lybrate|bajaj\s*health|niva\s*bupa|star\s*health\s*(ins|premium)|care\s*health|arogya\b|medibuddy|healthians|thyrocare|dr\s*lal|metropolis\s*lab|max\s*health|fortis\s*health|manipal\s*health|apollo\s*hospital|medicine\s*order\b|health\s*insurance\s*premium|medical\s*insurance\s*premium/.test(m)
+  },
+  {
+    id:'grocery', name:'Grocery', color:'#84CC16', icon:'🥬',
+    test: m => /\bdmart\b|d-mart\b|reliance\s*(fresh|smart\s*superstore)|more\s*supermarket|big\s*bazaar|bigbazaar|spencers\s*(fresh|retail)|nature'?s?\s*basket|heritage\s*fresh|lulu\s*hypermarket|star\s*bazaar|hypercity|spar\b.*india/.test(m)
+  },
+  {
+    id:'fuel', name:'Fuel', color:'#F59E0B', icon:'⛽',
+    test: m => /hindustan\s*petroleum|\bhpcl\b|bharat\s*petroleum|\bbpcl\b|indian\s*oil|\biocl\b|\bshell\b.*petrol|essar\s*fuel|petrol\s*pump|fuel\s*station|\bfastag\b(?!\s*recharge)/.test(m)
+  },
+  {
+    id:'gaming', name:'Gaming & Fantasy', color:'#EC4899', icon:'🎮',
+    test: m => /dream11|dream\s*11|\bmpl\b|mobile\s*premier\s*league|winzo\b|my11circle|11\s*wickets|fantain|gamezy|junglee\s*games|zupee\b|qureka|getmega|adda52|ace2three|rummy\s*circle|rummy\s*passion|loco\b.*game|steam\s*purchase|playstation\s*store|xbox\s*purchase/.test(m)
+  },
+  {
+    id:'insurance', name:'Insurance', color:'#6366F1', icon:'🛡️',
+    test: m => /\blic\b.*premium|policybazaar|policy\s*bazaar|hdfc\s*ergo|icici\s*lombard|bajaj\s*allianz|new\s*india\s*assurance|star\s*health\s*ins|tata\s*aig|\backo\b|go\s*digit|reliance\s*general\s*ins|royal\s*sundaram|future\s*generali|niva\s*bupa\s*ins|care\s*health\s*ins|life\s*insurance\s*premium|general\s*insurance\s*premium|motor\s*insurance|term\s*plan\s*premium|ulip\b.*premium/.test(m)
+  },
+  {
+    id:'credit', name:'Income & Credits', color:'#2D6A4F', icon:'💰',
+    test: () => false
+  },
+  {
+    id:'p2p', name:'Transfers', color:'#94A3B8', icon:'↔️',
+    test: m => /sent\s*to|received\s*from|transfer(red)?\s*(to|from)|p2p\b|peer.*peer/.test(m)
+  }
+];
+
+function catById(id) {
+  return CATS.find(c => c.id === id) || { id:'other', name:'Other', color:'#9A9088', icon:'💳' };
+}
+
+// ─── MERCHANT CLASSIFIER ───
+function classifyMerchant(merchant, type, rawText) {
+  if (type === 'credit') return 'credit';
+  if (type === 'investment') return 'invest';
+  const m = (merchant + ' ' + rawText).toLowerCase();
+  for (const cat of CATS) {
+    if (cat.id !== 'credit' && cat.test(m)) return cat.id;
+  }
+  return 'other';
+}
+
+// ─── AMOUNT EXTRACTION ───
+function extractAmount(text) {
+  const patterns = [
+    /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/gi,
+    /([\d,]+(?:\.\d{1,2})?)\s*(?:rs\.?|inr|₹)/gi,
+  ];
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const v = parseFloat(m[1].replace(/,/g,''));
+      if (!isNaN(v) && v > 0 && v < 1e8) return v;
+    }
+  }
+  return 0;
+}
+
+// ─── DATE EXTRACTION ───
+const MON_IDX = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function extractDate(text) {
+  const patterns = [
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+    /(\d{1,2})[\/\-](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\/\-](\d{4})/i,
+    /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i,
+    /(\d{4})[\/\-](\d{2})[\/\-](\d{2})/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (!m) continue;
+    if (p.source.startsWith('(\\d{4})')) {
+      return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+    }
+    const day = parseInt(m[1]);
+    const monRaw = m[2];
+    const yr = parseInt(m[3]);
+    const mon = isNaN(parseInt(monRaw)) ? (MON_IDX[monRaw.toLowerCase()] ?? 0) : parseInt(monRaw)-1;
+    if (day >= 1 && day <= 31 && mon >= 0 && mon <= 11 && yr >= 2015) {
+      return new Date(yr, mon, day);
+    }
+  }
+  return new Date();
+}
+
+// ─── MERCHANT EXTRACTION ───
+function extractMerchant(text) {
+  let m;
+
+  // "at <Merchant>" — card swipe pattern
+  m = text.match(/\bat\s+([A-Za-z][A-Za-z0-9 &.\-']{2,35}?)(?:\s+on\b|\s+for\b|\s+via\b|\s+using\b|\s*[,.]|\s*$)/i);
+  if (m) return m[1].trim();
+
+  // VPA before "@" — e.g. "to john.doe@okaxis"
+  m = text.match(/(?:to|from|paid\s+to|received\s+from)\s+([a-zA-Z0-9._+\-]{2,30})@[a-zA-Z0-9.]+/i);
+  if (m && !/^\d+$/.test(m[1])) return m[1].trim();
+
+  // "to <Name>" — UPI/NEFT recipient
+  m = text.match(/(?:paid|sent|transferred?|debited)?\s*to\s+([A-Za-z][A-Za-z0-9 &.\-']{2,35}?)(?:\s+(?:on|for|via|using|through|from|vpa|upi|ref|txn|a\/c|acc)\b|\s*[,.]|\s*$)/i);
+  if (m && !/^\d+$/.test(m[1])) return m[1].trim();
+
+  // "for <purpose>"
+  m = text.match(/\bfor\s+([A-Za-z][A-Za-z0-9 &.\-']{2,30}?)(?:\s+(?:on|via|using|ref)\b|\s*[,.]|\s*$)/i);
+  if (m) return m[1].trim();
+
+  // "from <Name>" — credits
+  m = text.match(/(?:credited|received|received\s+from)\s+([A-Za-z][A-Za-z0-9 &.\-']{2,35}?)(?:\s+(?:on|via|ref|upi)\b|\s*[,.]|\s*$)/i);
+  if (m && !/^\d+$/.test(m[1])) return m[1].trim();
+
+  return 'Unknown';
+}
+
+// ─── OTP DETECTION ───
+function isOtpSms(text) {
+  const lc = text.toLowerCase();
+  const hasOtpWord = lc.includes('otp') || lc.includes('one time') || lc.includes('one-time') ||
+                     lc.includes('verification code') || lc.includes('auth code') || lc.includes('passcode');
+  return hasOtpWord && text.length < 280;
+}
+
+// ─── SINGLE SMS PARSER ───
+function parseSingleSMS(raw) {
+  const text = (raw || '').trim();
+  if (!text || text.length < 20) return null;
+  if (isOtpSms(text)) return null;
+
+  const lc = text.toLowerCase();
+  const amount = extractAmount(text);
+  if (!amount) return null;
+
+  // Check for financial context (reduce false positives)
+  const hasFinancialContext = /rs\.?|inr|₹|debited|credited|deducted|paid|charged|withdrawn|received|salary|refund|cashback|sip|neft|imps|rtgs|upi|emi|a\/c|account|balance/.test(lc);
+  if (!hasFinancialContext) return null;
+
+  // Investment detection (check first — some contain "debited")
+  const investPatterns = [
+    /\bsip\s+(of|for|deducted|mandate|payment|processed|amount)/i,
+    /mutual\s+fund\s+(purchase|invest|order|sip)/i,
+    /\bmf\s+(purchase|invest|debit|sip|order)/i,
+    /lumpsum\s+(of|invest|purchase)/i,
+    /units?\s+allot(ted)?/i,
+    /\bfolio\s+no\b/i,
+    /fixed\s+deposit\s+(created|opened|booked)/i,
+    /\bfd\s+(created|opened|booked|of\s+rs|instruction)/i,
+    /\brd\s+(created|opened|instalment|of\s+rs)/i,
+    /recurring\s+deposit/i,
+    /ppf\s+(contribution|deposit)/i,
+    /nps\s+(contribution|tier|account)/i,
+    /\belss\s+(invest|purchase)/i,
+    /shares?\s+(purchased|bought|credited\s+to\s+demat)/i,
+    /stock\s+(purchase|order\s+executed)/i,
+    /brokerage\s+charged/i,
+  ];
+
+  let type = null;
+  for (const re of investPatterns) {
+    if (re.test(text)) { type = 'investment'; break; }
+  }
+
+  // Debit detection
+  if (!type) {
+    const debitRe = /\b(debited|deducted|auto.?debit|mandate\s+debit|si\s+debit|standing\s+inst|emi\s+(of|paid|deducted)|payment\s+(of|done|successful|processed)|paid\s+(to|for|via)|spent|charged\s+(to|on|for)|purchase\s+of|transaction\s+of|transferred\s+to|sent\s+to|debit\s+of|amount\s+debited|withdrawn)\b/i;
+    if (debitRe.test(text)) type = 'debit';
+  }
+
+  // Credit detection
+  if (!type) {
+    const creditRe = /\b(credited|received|deposited|refund(ed)?|cashback|cash\s*back|reversed|credit\s+of|salary|bonus|dividend\s+paid|interest\s+credited|transfer\s+received|amount\s+(added|loaded|credited)|amount\s+received)\b/i;
+    if (creditRe.test(text)) type = 'credit';
+  }
+
+  if (!type) return null;
+
+  const merchant = extractMerchant(text);
+  const date = extractDate(text);
+  const catId = classifyMerchant(merchant, type, lc);
+
+  let investType = null;
+  if (type === 'investment') {
+    if (/\bsip\b/i.test(text)) investType = 'SIP';
+    else if (/\bfd\b|fixed\s*deposit/i.test(text)) investType = 'FD';
+    else if (/\brd\b|recurring\s*deposit/i.test(text)) investType = 'RD';
+    else if (/\bppf\b|public\s*provident/i.test(text)) investType = 'PPF';
+    else if (/\bnps\b|national\s*pension/i.test(text)) investType = 'NPS';
+    else if (/\belss\b/i.test(text)) investType = 'ELSS';
+    else if (/lumpsum/i.test(text)) investType = 'Lumpsum';
+    else if (/share|stock|equity/i.test(text)) investType = 'Stocks';
+    else investType = 'MF';
+  }
+
+  return {
+    id: Math.random().toString(36).slice(2),
+    type, catId, merchant, amount, date, investType,
+  };
+}
+
+// ─── BATCH SMS PARSER ───
+function parseSMSBatch(rawText) {
+  // Try double-newline split first
+  const chunks = rawText.split(/\n{2,}|---+/);
+  const results = [];
+  const seen = new Set();
+
+  const add = (t) => {
+    if (!t) return;
+    const key = `${t.type}|${t.amount}|${t.date.toDateString()}`;
+    if (!seen.has(key)) { seen.add(key); results.push(t); }
+  };
+
+  for (const chunk of chunks) {
+    add(parseSingleSMS(chunk));
+  }
+
+  // If nothing found, try line by line
+  if (results.length === 0) {
+    for (const line of rawText.split('\n')) {
+      add(parseSingleSMS(line));
+    }
+  }
+
+  return results;
+}
+
+// ─── ANALYTICS ───
+function filteredTxns() {
+  if (!S.selectedMonth) return S.transactions;
+  return S.transactions.filter(t =>
+    t.date.getFullYear() === S.selectedMonth.year &&
+    t.date.getMonth() === S.selectedMonth.month
+  );
+}
+
+function computeAnalytics(txns) {
+  const totalDebit   = txns.filter(t => t.type==='debit').reduce((a,t)=>a+t.amount,0);
+  const totalCredit  = txns.filter(t => t.type==='credit').reduce((a,t)=>a+t.amount,0);
+  const totalInvest  = txns.filter(t => t.type==='investment').reduce((a,t)=>a+t.amount,0);
+
+  const byCat = {};
+  for (const t of txns) {
+    if (t.type === 'credit') continue;
+    if (!byCat[t.catId]) byCat[t.catId] = { amount:0, count:0 };
+    byCat[t.catId].amount += t.amount;
+    byCat[t.catId].count++;
+  }
+
+  const byMonth = {};
+  for (const t of txns) {
+    const key = `${t.date.getFullYear()}-${String(t.date.getMonth()+1).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = { debit:0, credit:0 };
+    if (t.type==='debit'||t.type==='investment') byMonth[key].debit += t.amount;
+    if (t.type==='credit') byMonth[key].credit += t.amount;
+  }
+
+  return { totalDebit, totalCredit, totalInvest, byCat, byMonth };
+}
+
+// ─── INSIGHTS ENGINE ───
+function generateInsights(txns, analytics) {
+  const insights = [];
+  const { byCat, totalDebit } = analytics;
+  const spendTxns = txns.filter(t => t.type==='debit');
+
+  const qcTxns = spendTxns.filter(t => t.catId==='qc');
+  if (qcTxns.length >= 4) {
+    const tot = qcTxns.reduce((a,t)=>a+t.amount,0);
+    insights.push({ id:'qc-freq', type:'alert', icon:'🛒',
+      title:`${qcTxns.length} quick commerce orders`,
+      preview:`You spent ₹${fmt(tot)} across delivery apps`,
+      fullBody:`You placed ${qcTxns.length} quick commerce orders totalling ₹${fmt(tot)}. At this frequency, consolidating grocery runs to 2–3 times a week could save ₹${fmt(tot*0.18)} in delivery fees and impulse additions.`
+    });
+  }
+
+  const foodTxns = spendTxns.filter(t => t.catId==='food');
+  if (foodTxns.length >= 5) {
+    const tot = foodTxns.reduce((a,t)=>a+t.amount,0);
+    insights.push({ id:'food-freq', type:'alert', icon:'🍽️',
+      title:`High food delivery spend`,
+      preview:`₹${fmt(tot)} on Swiggy, Zomato & more`,
+      fullBody:`Food delivery totalled ₹${fmt(tot)} across ${foodTxns.length} orders. Cooking at home 3–4 times per week typically cuts this by 30–40%, saving ₹${fmt(tot*0.35)}/month.`
+    });
+  }
+
+  const subTxns = spendTxns.filter(t => t.catId==='sub');
+  if (subTxns.length >= 3) {
+    const tot = subTxns.reduce((a,t)=>a+t.amount,0);
+    const smallest = subTxns.reduce((a,t)=>t.amount<a.amount?t:a,subTxns[0]);
+    insights.push({ id:'sub-audit', type:'tip', icon:'📺',
+      title:`${subTxns.length} active subscriptions`,
+      preview:`₹${fmt(tot)}/month across streaming & apps`,
+      fullBody:`You have ${subTxns.length} active subscriptions totalling ₹${fmt(tot)}/month. Most people find at least one they rarely use. Cancelling just ${smallest.merchant} (₹${fmt(smallest.amount)}/mo) would save ₹${fmt(smallest.amount*12)}/year.`
+    });
+  }
+
+  if (spendTxns.length > 0) {
+    const biggest = spendTxns.reduce((a,t)=>t.amount>a.amount?t:a,spendTxns[0]);
+    if (biggest.amount > 3000 && totalDebit > 0) {
+      insights.push({ id:'big-txn', type:'info', icon:'💸',
+        title:`Largest spend: ₹${fmt(biggest.amount)}`,
+        preview:`${biggest.merchant} on ${fmtDate(biggest.date)}`,
+        fullBody:`Your largest transaction was ₹${fmt(biggest.amount)} at "${biggest.merchant}" on ${fmtDate(biggest.date)}. This represents ${Math.round(biggest.amount/totalDebit*100)}% of total spending this period.`
+      });
+    }
+  }
+
+  const investTxns = txns.filter(t => t.type==='investment');
+  if (investTxns.length > 0) {
+    const tot = investTxns.reduce((a,t)=>a+t.amount,0);
+    const sipCount = investTxns.filter(t=>t.investType==='SIP').length;
+    insights.push({ id:'invest-good', type:'tip', icon:'📈',
+      title:`₹${fmt(tot)} invested this period`,
+      preview:`${sipCount} SIP${sipCount!==1?'s':''} + ${investTxns.length-sipCount} other investment${investTxns.length-sipCount!==1?'s':''}`,
+      fullBody:`You invested ₹${fmt(tot)} this period${sipCount>0?` including ${sipCount} SIP(s)`:''}. Consider increasing SIP amounts by ₹500 annually — at 12% CAGR, an extra ₹500/month today becomes ₹1.7L over 10 years.`
+    });
+  }
+
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1].amount-a[1].amount);
+  if (catEntries.length>=2 && totalDebit>0) {
+    const [topId,topData] = catEntries[0];
+    const pct = Math.round(topData.amount/totalDebit*100);
+    if (pct > 35) {
+      const cat = catById(topId);
+      insights.push({ id:'top-cat', type:'alert', icon:cat.icon,
+        title:`${pct}% of spend on ${cat.name}`,
+        preview:`₹${fmt(topData.amount)} — your biggest category`,
+        fullBody:`${cat.name} is consuming ${pct}% of your total spending (₹${fmt(topData.amount)}). If unintentional, reducing this category by 20% would free up ₹${fmt(topData.amount*0.2)}/month — ₹${fmt(topData.amount*0.2*12)}/year.`
+      });
+    }
+  }
+
+  return insights;
+}
+
+// ─── OPPORTUNITIES ENGINE ───
+function generateOpportunities(txns, analytics) {
+  const opps = [];
+  const { byCat, totalInvest, totalDebit } = analytics;
+  const spendTxns = txns.filter(t=>t.type==='debit');
+
+  if (byCat.qc && byCat.qc.amount > 1500) {
+    opps.push({ id:'bb-sub', icon:'🛒', bg:'rgba(212,130,74,.12)',
+      title:'Switch to BigBasket BBStar',
+      sub:'For heavy quick commerce users',
+      saving: Math.round(byCat.qc.amount*0.15),
+      fullBody:`You spent ₹${fmt(byCat.qc.amount)} on quick commerce. BBStar subscription (₹299/yr) gives free delivery + 5% savings. At your order volume you could save ₹${fmt(byCat.qc.amount*0.15)}/month.`
+    });
+  }
+
+  if (byCat.food && byCat.food.amount > 2000) {
+    opps.push({ id:'home-cook', icon:'🍳', bg:'rgba(196,82,26,.1)',
+      title:'Cook 3 days a week',
+      sub:'Replace 3 food delivery orders',
+      saving: Math.round(byCat.food.amount*0.3),
+      fullBody:`Replacing 3 food delivery orders/week with home cooking cuts costs by ~30%. That's ₹${fmt(byCat.food.amount*0.3)}/month → ₹${fmt(byCat.food.amount*0.3*12)}/year.`
+    });
+  }
+
+  if (byCat.sub && byCat.sub.count >= 3) {
+    opps.push({ id:'sub-cut', icon:'✂️', bg:'rgba(124,58,237,.1)',
+      title:'Audit your subscriptions',
+      sub:`${byCat.sub.count} active — cancel unused ones`,
+      saving: Math.round(byCat.sub.amount/byCat.sub.count),
+      fullBody:`${byCat.sub.count} subscriptions × ₹${fmt(byCat.sub.amount/byCat.sub.count)} average = ₹${fmt(byCat.sub.amount)}/month. Cancelling even one saves ≈₹${fmt(byCat.sub.amount/byCat.sub.count*12)}/year.`
+    });
+  }
+
+  const transTxns = spendTxns.filter(t=>t.catId==='transport');
+  if (transTxns.length >= 8) {
+    const tot = transTxns.reduce((a,t)=>a+t.amount,0);
+    opps.push({ id:'metro', icon:'🚇', bg:'rgba(69,123,157,.1)',
+      title:'Use metro/auto for short trips',
+      sub:`${transTxns.length} cab rides this period`,
+      saving: Math.round(tot*0.25),
+      fullBody:`${transTxns.length} cab trips totalling ₹${fmt(tot)}. Switching to metro or auto for trips under 5km typically cuts transport costs by 25%, saving ₹${fmt(tot*0.25)}/month.`
+    });
+  }
+
+  if (totalInvest > 0 && (totalInvest+totalDebit) > 0) {
+    const rate = totalInvest/(totalInvest+totalDebit);
+    if (rate < 0.2) {
+      opps.push({ id:'sip-up', icon:'📈', bg:'rgba(29,53,87,.08)',
+        title:'Boost your investment rate',
+        sub:`Currently ${Math.round(rate*100)}% — aim for 20%+`,
+        saving: null,
+        fullBody:`Your savings/investment rate is ${Math.round(rate*100)}% of total outflows. Increasing your SIP by ₹500/month now compounds to ₹${fmt(500*12*((Math.pow(1.01,120)-1)/0.01))} over 10 years at 12% CAGR.`
+      });
+    }
+  }
+
+  return opps;
+}
+
+// ─── FORMAT HELPERS ───
+function fmt(n) {
+  if (n == null || isNaN(n)) return '0';
+  if (n >= 1e5) return (n/1e5).toFixed(1)+'L';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toLocaleString('en-IN');
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+}
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ─── RENDER: OVERVIEW ───
+let cashflowChart = null;
+function renderSpendOverview(txns, analytics) {
+  const { totalDebit, totalCredit, totalInvest, byMonth } = analytics;
+  const el = document.getElementById('spend-overview-content');
+
+  const months = Object.keys(byMonth).sort().slice(-6);
+  const labels = months.map(k => MONTH_NAMES[parseInt(k.split('-')[1])-1]);
+  const debits  = months.map(k => Math.round(byMonth[k].debit));
+  const credits = months.map(k => Math.round(byMonth[k].credit));
+
+  el.innerHTML = `
+    <div class="summary-row" style="margin-top:8px">
+      <div class="summary-tile"><div class="lbl">Spent</div><div class="val red">₹${fmt(totalDebit)}</div></div>
+      <div class="summary-tile"><div class="lbl">Invested</div><div class="val blue">₹${fmt(totalInvest)}</div></div>
+      <div class="summary-tile"><div class="lbl">Income</div><div class="val green">₹${fmt(totalCredit)}</div></div>
+    </div>
+    <div class="card" style="padding:16px 12px">
+      <div class="card-title">Cashflow — last ${labels.length||1} month${labels.length!==1?'s':''}</div>
+      <div style="position:relative;height:180px"><canvas id="cashflow-chart"></canvas></div>
+    </div>
+    <div style="padding:0 16px 8px;font-size:12px;color:var(--ink3)">${S.transactions.length} transactions analysed from ${S.rawCount} bank messages</div>
+  `;
+
+  if (cashflowChart) { cashflowChart.destroy(); cashflowChart = null; }
+  if (months.length > 0) {
+    cashflowChart = new Chart(
+      document.getElementById('cashflow-chart').getContext('2d'), {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          { label:'Outflow', data:debits,  backgroundColor:'rgba(196,82,26,.75)', borderRadius:4, barPercentage:.6 },
+          { label:'Income',  data:credits, backgroundColor:'rgba(45,106,79,.7)',  borderRadius:4, barPercentage:.6 }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:true, position:'bottom', labels:{font:{size:11},boxWidth:10,padding:12} } },
+        scales:{
+          x:{ grid:{display:false}, ticks:{font:{size:11}} },
+          y:{ grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{size:10},callback:v=>'₹'+fmt(v)} }
+        }
+      }
+    });
+  }
+}
+
+// ─── RENDER: CATEGORIES ───
+let donutChart = null;
+function renderCategories(txns, analytics) {
+  const { byCat, totalDebit } = analytics;
+  const el = document.getElementById('spend-categories-content');
+  const cats = Object.entries(byCat).filter(([id])=>id!=='invest').sort((a,b)=>b[1].amount-a[1].amount);
+
+  if (cats.length === 0) {
+    el.innerHTML = emptyState('No spend data','Categories will appear here after analysis.');
+    return;
+  }
+
+  const top6 = cats.slice(0,6);
+  el.innerHTML = `
+    <div class="card" style="padding:16px 12px">
+      <div class="card-title">Spending breakdown</div>
+      <div style="position:relative;height:200px"><canvas id="donut-chart"></canvas></div>
+    </div>
+    <div class="cat-list">
+      ${cats.map(([id,d]) => {
+        const cat = catById(id);
+        const pct = totalDebit > 0 ? Math.round(d.amount/totalDebit*100) : 0;
+        return `
+          <div class="cat-item">
+            <div class="cat-dot" style="background:${cat.color}"></div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="cat-name">${cat.icon} ${cat.name}</span>
+                <span class="cat-count">${d.count}×</span>
+              </div>
+              <div class="cat-bar-row" style="margin-top:5px">
+                <div class="cat-bar-fill" style="width:${pct}%;background:${cat.color}"></div>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div class="cat-amt">₹${fmt(d.amount)}</div>
+              <div style="font-size:10px;color:var(--ink3)">${pct}%</div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  if (donutChart) { donutChart.destroy(); donutChart = null; }
+  donutChart = new Chart(
+    document.getElementById('donut-chart').getContext('2d'), {
+    type:'doughnut',
+    data:{
+      labels: top6.map(([id])=>catById(id).name),
+      datasets:[{ data:top6.map(([,d])=>d.amount), backgroundColor:top6.map(([id])=>catById(id).color), borderWidth:2, borderColor:'#fff' }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>' ₹'+fmt(ctx.raw)}} }
+    }
+  });
+}
+
+// ─── RENDER: TRANSACTIONS ───
+function renderTransactions(txns) {
+  const el = document.getElementById('spend-transactions-content');
+  if (txns.length === 0) {
+    el.innerHTML = emptyState('No transactions','Parsed transactions will appear here.');
+    return;
+  }
+  const sorted = [...txns].sort((a,b) => b.date - a.date);
+  const groups = {};
+  for (const t of sorted) {
+    const key = fmtDate(t.date);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  }
+  el.innerHTML = `<div class="txn-list">${
+    Object.entries(groups).map(([date,items]) => `
+      <div class="txn-date-group">${date}</div>
+      ${items.map(t => {
+        const cat = catById(t.catId);
+        const cls = t.type==='credit' ? 'credit' : t.type==='investment' ? 'invest' : 'debit';
+        const sign = t.type==='credit' ? '+' : '−';
+        return `
+          <div class="txn-item">
+            <div class="txn-icon" style="background:${cat.color}22">${cat.icon}</div>
+            <div class="txn-body">
+              <div class="txn-name">${escHtml(t.merchant)}</div>
+              <div class="txn-meta">${cat.name}${t.investType?' · '+t.investType:''}</div>
+            </div>
+            <div class="txn-amt ${cls}">${sign}₹${fmt(t.amount)}</div>
+          </div>`;
+      }).join('')}
+    `).join('')
+  }</div>`;
+}
+
+// ─── RENDER: INVESTING ───
+function renderInvesting(txns, analytics) {
+  const el = document.getElementById('invest-content');
+  const investTxns = txns.filter(t => t.type==='investment');
+
+  if (investTxns.length === 0) {
+    el.innerHTML = emptyState('No investment activity','SIP, FD, RD, stocks, and lumpsum transactions appear here.');
+    return;
+  }
+
+  const byType = {};
+  for (const t of investTxns) {
+    const k = t.investType || 'Other';
+    if (!byType[k]) byType[k] = { amount:0, count:0 };
+    byType[k].amount += t.amount;
+    byType[k].count++;
+  }
+  const total = investTxns.reduce((a,t)=>a+t.amount,0);
+  const sorted = [...investTxns].sort((a,b)=>b.date-a.date);
+
+  el.innerHTML = `
+    <div class="invest-summary">
+      <div class="invest-tile"><div class="lbl">Total Invested</div><div class="val">₹${fmt(total)}</div></div>
+      <div class="invest-tile"><div class="lbl">Transactions</div><div class="val">${investTxns.length}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">By type</div>
+      <div class="invest-breakdown">
+        ${Object.entries(byType).sort((a,b)=>b[1].amount-a[1].amount).map(([type,d]) => `
+          <div class="invest-row">
+            <div>
+              <div class="invest-row-label">${type}</div>
+              <div class="invest-row-sub">${d.count} transaction${d.count>1?'s':''}</div>
+            </div>
+            <div class="invest-row-amt">₹${fmt(d.amount)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="sec-header" style="padding-top:8px"><div class="sec-title" style="font-size:16px">Recent</div></div>
+    <div class="txn-list" style="padding:0 16px">
+      ${sorted.slice(0,30).map(t => `
+        <div class="txn-item">
+          <div class="txn-icon" style="background:rgba(29,53,87,.1)">📈</div>
+          <div class="txn-body">
+            <div class="txn-name">${escHtml(t.merchant)}</div>
+            <div class="txn-meta">${t.investType||'Investment'} · ${fmtDate(t.date)}</div>
+          </div>
+          <div class="txn-amt invest">−₹${fmt(t.amount)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ─── RENDER: INSIGHTS ───
+function renderInsights(insights) {
+  const patternEl   = document.getElementById('insights-patterns-content');
+  const anomalyEl   = document.getElementById('insights-anomalies-content');
+  const patterns  = insights.filter(i=>i.type!=='alert');
+  const anomalies = insights.filter(i=>i.type==='alert');
+
+  const makeCard = (ins) => `
+    <div class="insight-card" onclick="openInsightDetail(${JSON.stringify(ins).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})">
+      <div class="insight-card-header">
+        <div class="insight-icon" style="background:rgba(0,0,0,.05)">${ins.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="insight-title">${escHtml(ins.title)}</div>
+          <div class="insight-preview">${escHtml(ins.preview)}</div>
+        </div>
+      </div>
+      <div class="insight-footer">
+        <span class="insight-tag ${ins.type}">${ins.type.charAt(0).toUpperCase()+ins.type.slice(1)}</span>
+        <span class="insight-cta">Tap to learn more →</span>
+      </div>
+    </div>`;
+
+  patternEl.innerHTML  = patterns.length  ? patterns.map(makeCard).join('')  : emptyState('No patterns yet','Keep tracking to see spending patterns emerge.');
+  anomalyEl.innerHTML  = anomalies.length ? anomalies.map(makeCard).join('') : emptyState('No anomalies','Your spending looks consistent — that\'s great!');
+}
+
+// ─── RENDER: OPPORTUNITIES ───
+function renderOpportunities(opps) {
+  const el = document.getElementById('save-content');
+  if (opps.length === 0) {
+    el.innerHTML = emptyState('No opportunities yet','Personalised saving tips will appear once we analyse your spending.');
+    return;
+  }
+  el.innerHTML = opps.map(opp => `
+    <div class="opp-card" onclick="openOppOverlay(${JSON.stringify(opp).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026')})">
+      <div class="opp-card-inner">
+        <div class="opp-header">
+          <div class="opp-icon" style="background:${opp.bg}">${opp.icon}</div>
+          <div style="flex:1;min-width:0">
+            <div class="opp-title">${escHtml(opp.title)}</div>
+            <div class="opp-sub">${escHtml(opp.sub)}</div>
+          </div>
+        </div>
+        ${opp.saving ? `
+          <div class="opp-saving">
+            <div class="opp-saving-label">Potential monthly saving</div>
+            <div class="opp-saving-amt">₹${fmt(opp.saving)}</div>
+          </div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── RENDER ALL ───
+function renderAll() {
+  const txns = filteredTxns();
+  const analytics = computeAnalytics(txns);
+  renderSpendOverview(txns, analytics);
+  renderCategories(txns, analytics);
+  renderTransactions(txns);
+  renderInvesting(txns, analytics);
+  renderInsights(generateInsights(txns, analytics));
+  renderOpportunities(generateOpportunities(txns, analytics));
+}
+
+// ─── MONTH NAVIGATION ───
+function changeMonth(delta) {
+  const now = new Date();
+  if (!S.selectedMonth) S.selectedMonth = { year:now.getFullYear(), month:now.getMonth() };
+  let m = S.selectedMonth.month + delta;
+  let y = S.selectedMonth.year;
+  if (m < 0)  { m=11; y--; }
+  if (m > 11) { m=0;  y++; }
+  S.selectedMonth = { year:y, month:m };
+  document.getElementById('month-label').textContent = MONTH_NAMES[m]+' '+y;
+  renderAll();
+}
+
+// ─── PLATFORM DETECTION ───
+function isNative() {
+  try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+  catch(e) { return false; }
+}
+
+// ─── NATIVE SMS ───
+async function readSmsNative() {
+  const { Plugins } = window.Capacitor;
+  const { SmsPlugin } = Plugins;
+  if (!SmsPlugin) throw new Error('SmsPlugin not available');
+  return SmsPlugin.readBankSms({ maxCount:500 });
+}
+
+// ─── LOADING ───
+function showLoading(text, sub) {
+  document.getElementById('loading-text').textContent = text||'Reading your messages…';
+  document.getElementById('loading-sub').textContent  = sub||'Filtering bank SMS only';
+  document.getElementById('loading-overlay').classList.add('visible');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('visible');
+}
+
+// ─── LAUNCH APP ───
+function launchApp(txns, rawCount) {
+  S.transactions = txns;
+  S.rawCount = rawCount;
+  if (txns.length > 0) {
+    const now = new Date();
+    S.selectedMonth = { year:now.getFullYear(), month:now.getMonth() };
+    document.getElementById('month-label').textContent = MONTH_NAMES[now.getMonth()]+' '+now.getFullYear();
+  }
+  document.getElementById('onboard').classList.remove('active');
+  document.getElementById('main-app').classList.add('visible');
+  renderAll();
+}
+
+// ─── HANDLE BEGIN ───
+async function handleBegin() {
+  if (isNative()) {
+    showLoading('Requesting SMS access…','Only bank messages will be read');
+    try {
+      const result = await readSmsNative();
+      showLoading('Analysing messages…','Processing '+result.count+' bank messages');
+      await new Promise(r=>setTimeout(r,200));
+      const txns = [];
+      for (const msg of (result.messages||[])) {
+        const t = parseSingleSMS(msg);
+        if (t) txns.push(t);
+      }
+      hideLoading();
+      launchApp(txns, result.count);
+    } catch(e) {
+      hideLoading();
+      if (e.message === 'SMS_PERMISSION_DENIED') {
+        document.querySelector('.ob-card').innerHTML = `
+          <h2>SMS permission needed</h2>
+          <p>Ledger needs SMS read permission to analyse your bank transactions. Please grant it in device settings and try again.</p>`;
+        document.querySelector('.ob-actions').innerHTML = `
+          <button class="btn-primary" onclick="handleBegin()">Try again</button>
+          <button class="btn-secondary" onclick="openPasteModal()">Import manually</button>`;
+      } else {
+        openPasteModal();
+      }
+    }
+  } else {
+    openPasteModal();
+  }
+}
+
+// ─── PASTE MODAL ───
+function openPasteModal() {
+  document.getElementById('paste-modal').classList.add('visible');
+}
+function closePasteModal() {
+  document.getElementById('paste-modal').classList.remove('visible');
+}
+function processPasted() {
+  const raw = document.getElementById('paste-input').value.trim();
+  if (!raw) return;
+  closePasteModal();
+  showLoading('Analysing messages…','Parsing transactions');
+  setTimeout(() => {
+    const txns = parseSMSBatch(raw);
+    hideLoading();
+    launchApp(txns, txns.length);
+  }, 350);
+}
+
+// ─── TAB NAVIGATION ───
+const ALL_TABS = ['spend','invest','insights','save','privacy'];
+function switchTab(name) {
+  ALL_TABS.forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+    document.getElementById('nav-'+t).classList.toggle('active', t===name);
+  });
+}
+
+// ─── STAB NAVIGATION ───
+function switchStab(tab, stab) {
+  const tabEl = document.getElementById('tab-'+tab);
+  tabEl.querySelectorAll('.stab-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes("'"+stab+"'"));
+  });
+  tabEl.querySelectorAll('.stab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'stab-'+tab+'-'+stab);
+  });
+}
+
+// ─── OVERLAYS ───
+function openInsightDetail(ins) {
+  document.getElementById('insight-detail-title').textContent = ins.title;
+  document.getElementById('insight-detail-body').textContent  = ins.fullBody;
+  document.getElementById('insight-detail').classList.add('visible');
+}
+function closeInsightDetail(e) {
+  if (e && e.target !== document.getElementById('insight-detail')) return;
+  document.getElementById('insight-detail').classList.remove('visible');
+}
+function openOppOverlay(opp) {
+  document.getElementById('opp-detail-title').textContent = opp.title;
+  document.getElementById('opp-detail-body').textContent  = opp.fullBody;
+  document.getElementById('opp-overlay').classList.add('visible');
+}
+function closeOppOverlay(e) {
+  if (e && e.target !== document.getElementById('opp-overlay')) return;
+  document.getElementById('opp-overlay').classList.remove('visible');
+}
+
+// ─── UTILITIES ───
+function emptyState(title, sub) {
+  return `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

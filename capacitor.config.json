@@ -1,0 +1,19 @@
+{
+  "appId": "com.ledger.app",
+  "appName": "Ledger",
+  "webDir": ".",
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "releaseType": "APK"
+    }
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "plugins": {}
+}
