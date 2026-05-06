@@ -47,6 +47,11 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.READ_SMS" />\n    <application|' "$MANIFEST"
           fi
 
+      - name: Prepare web assets
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+
       - name: Sync Capacitor
         run: npx cap sync android
 
